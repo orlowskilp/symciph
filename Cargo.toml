@@ -1,7 +1,6 @@
 [package]
-name = "dev-env-rust-arch-linux-vscode"
-version = "0.1.0"
-authors = ["Lukasz Orlowski <orlowskilp@gmail.com>"]
+name = "crypto-primitives"
+version = "0.3.0"
 edition = "2021"
 
 [dependencies]
