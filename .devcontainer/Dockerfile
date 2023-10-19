@@ -21,7 +21,9 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > ~/install-rust.s
     ~/install-rust.sh -y && \
     /root/.cargo/bin/rustup component add rust-analysis --toolchain stable-x86_64-unknown-linux-gnu && \
     /root/.cargo/bin/rustup component add rust-src --toolchain stable-x86_64-unknown-linux-gnu && \
-    /root/.cargo/bin/rustup component add rust-analyzer --toolchain stable-x86_64-unknown-linux-gnu
+    /root/.cargo/bin/rustup component add rust-analyzer --toolchain stable-x86_64-unknown-linux-gnu && \
+    /root/.cargo/bin/rustup component add llvm-tools-preview --toolchain stable-x86_64-unknown-linux-gnu && \
+    /root/.cargo/bin/cargo install cargo-llvm-cov
 # Move files to user directory
 RUN mv ~/.cargo /home/${USERNAME} && \
     chown -R ${USERNAME}:${USERNAME} /home/${USERNAME}/.cargo && \
