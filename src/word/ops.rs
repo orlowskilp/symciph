@@ -95,12 +95,14 @@ impl_shr_for_word_for_unsigned_types!(usize, u8, u16, u32, u64);
 
 #[cfg(test)]
 mod tests {
-    mod ops {
-        use crate::word::tests::*;
-        use crate::Word;
+    use crate::word::tests::*;
+    use crate::Word;
+
+    mod binand {
+        use super::*;
 
         #[test]
-        fn binand_zero_mask() {
+        fn zero_mask() {
             let right = Word::from(WORD_LEN_47) & Word::zero();
             let left = Word::zero();
 
@@ -108,7 +110,7 @@ mod tests {
         }
 
         #[test]
-        fn binand_ones_mask() {
+        fn ones_mask() {
             let w = Word::from(WORD_LEN_47);
 
             let right = w & Word::ones(w.len());
@@ -118,7 +120,7 @@ mod tests {
         }
 
         #[test]
-        fn binand_0xff_and_0xff0() {
+        fn value_0xff_and_0xff0() {
             let right = Word::from(0xFFu64) & Word::from(0xFF0u64);
             let left = Word::from(0xF0u64);
 
@@ -126,7 +128,7 @@ mod tests {
         }
 
         #[test]
-        fn binand_assign_trivial_ones_and_zero() {
+        fn assign_trivial_ones_and_zero() {
             let mut right = Word::MAX;
             right &= Word::zero();
             let left = Word::zero();
@@ -135,7 +137,7 @@ mod tests {
         }
 
         #[test]
-        fn binand_assign_trivial_ones_and_ones() {
+        fn assign_trivial_ones_and_ones() {
             let mut right = Word::MAX;
             right &= Word::MAX;
             let left = Word::MAX;
@@ -144,16 +146,20 @@ mod tests {
         }
 
         #[test]
-        fn binand_assign_0xff_and_0xff0() {
+        fn assign_0xff_and_0xff0() {
             let mut right = Word::from(0xFFu64);
             right &= Word::from(0xFF0u64);
             let left = Word::from(0xF0u64);
 
             assert_eq!(left, right);
         }
+    }
+
+    mod binor {
+        use super::*;
 
         #[test]
-        fn binor_zero_mask() {
+        fn zero_mask() {
             let w = Word::from(WORD_LEN_47);
 
             let right = w | Word::zero();
@@ -163,7 +169,7 @@ mod tests {
         }
 
         #[test]
-        fn binor_ones_mask() {
+        fn ones_mask() {
             let w = Word::from(WORD_LEN_47);
 
             let right = w | Word::ones(w.len());
@@ -173,7 +179,7 @@ mod tests {
         }
 
         #[test]
-        fn binor_0xff_or_0xff0() {
+        fn value_0xff_or_0xff0() {
             let right = Word::from(0xFFu64) | Word::from(0xFF0u64);
             let left = Word::from(0xFFFu64);
 
@@ -181,7 +187,7 @@ mod tests {
         }
 
         #[test]
-        fn binor_assign_trivial_ones_and_zero() {
+        fn assign_trivial_ones_and_zero() {
             let mut right = Word::MAX;
             right |= Word::zero();
             let left = Word::MAX;
@@ -190,7 +196,7 @@ mod tests {
         }
 
         #[test]
-        fn binor_assign_trivial_ones_and_ones() {
+        fn assign_trivial_ones_and_ones() {
             let mut right = Word::MAX;
             right |= Word::MAX;
             let left = Word::MAX;
@@ -199,13 +205,17 @@ mod tests {
         }
 
         #[test]
-        fn binor_assign_0xff_and_0xff0() {
+        fn assign_0xff_and_0xff0() {
             let mut right = Word::from(0xFFu64);
             right |= Word::from(0xFF0u64);
             let left = Word::from(0xFFFu64);
 
             assert_eq!(left, right);
         }
+    }
+
+    mod binxor {
+        use super::*;
 
         #[test]
         fn binxor_trivial_zero_xor_ones() {
@@ -260,6 +270,10 @@ mod tests {
 
             assert_eq!(left, right);
         }
+    }
+
+    mod not {
+        use super::*;
 
         #[test]
         fn not_trivial_ones() {
@@ -292,9 +306,13 @@ mod tests {
 
             assert_eq!(left, right);
         }
+    }
+
+    mod shl {
+        use super::*;
 
         #[test]
-        fn shl_by_0() {
+        fn by_0() {
             let left = Word::from(0xFFu64);
             let right = left << 0usize;
 
@@ -302,7 +320,7 @@ mod tests {
         }
 
         #[test]
-        fn shl_by_4() {
+        fn by_4() {
             let right = Word::from(0xFFu64) << 4usize;
             let left = Word::from(0xFF0u64);
 
@@ -311,12 +329,16 @@ mod tests {
 
         #[test]
         #[should_panic]
-        fn shl_with_overflow() {
+        fn with_overflow() {
             let _ = Word::from(0xFFu64) << 64usize;
         }
+    }
+
+    mod shr {
+        use super::*;
 
         #[test]
-        fn shr_by_0() {
+        fn by_0() {
             let left = Word::from(0xFFu64);
             let right = left >> 0usize;
 
@@ -324,7 +346,7 @@ mod tests {
         }
 
         #[test]
-        fn shr_by_4() {
+        fn by_4() {
             let right = Word::from(0xFFu64) >> 4usize;
             let left = Word::from(0xFu64);
 
@@ -333,7 +355,7 @@ mod tests {
 
         #[test]
         #[should_panic]
-        fn shr_with_overflow() {
+        fn with_overflow() {
             let _ = Word::from(0xFFu64) >> 64usize;
         }
     }

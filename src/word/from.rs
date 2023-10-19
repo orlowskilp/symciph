@@ -132,97 +132,93 @@ mod tests {
     use crate::word::tests::*;
     use crate::Word;
 
-    mod from {
-        use super::*;
+    #[test]
+    fn word_to_u8_8_element_array() {
+        let right: [u8; 8] = Word::MAX.into();
+        let left = [0xFFu8; 8];
 
-        #[test]
-        fn word_to_u8_8_element_array() {
-            let right: [u8; 8] = Word::MAX.into();
-            let left = [0xFFu8; 8];
+        assert!(left
+            .iter()
+            .zip(right.iter())
+            .all(|(left, right)| left == right));
+    }
 
-            assert!(left
-                .iter()
-                .zip(right.iter())
-                .all(|(left, right)| left == right));
-        }
+    #[test]
+    fn u8_8_element_array_to_word() {
+        let right = Word::from([0xFFu8; 8]);
+        let left = Word::MAX;
 
-        #[test]
-        fn u8_8_element_array_to_word() {
-            let right = Word::from([0xFFu8; 8]);
-            let left = Word::MAX;
+        assert_eq!(left, right);
+    }
 
-            assert_eq!(left, right);
-        }
+    #[test]
+    #[should_panic]
+    fn too_long_word_to_u8_4_element_array() {
+        let _: [u8; 4] = Word::MAX.into();
+    }
 
-        #[test]
-        #[should_panic]
-        fn too_long_word_to_u8_4_element_array() {
-            let _: [u8; 4] = Word::MAX.into();
-        }
+    #[test]
+    fn word_to_u8_4_element_array() {
+        let right: [u8; 4] = Word::from(u32::MAX).into();
+        let left = [0xFFu8; 4];
 
-        #[test]
-        fn word_to_u8_4_element_array() {
-            let right: [u8; 4] = Word::from(u32::MAX).into();
-            let left = [0xFFu8; 4];
+        assert!(left
+            .iter()
+            .zip(right.iter())
+            .all(|(left, right)| left == right));
+    }
 
-            assert!(left
-                .iter()
-                .zip(right.iter())
-                .all(|(left, right)| left == right));
-        }
+    #[test]
+    fn u8_4_element_array_to_word() {
+        let right = Word::from([0xFFu8; 4]);
+        let left = Word::from(u32::MAX);
 
-        #[test]
-        fn u8_4_element_array_to_word() {
-            let right = Word::from([0xFFu8; 4]);
-            let left = Word::from(u32::MAX);
+        assert_eq!(left, right);
+    }
 
-            assert_eq!(left, right);
-        }
+    #[test]
+    fn word_to_u16_array() {
+        let right: [u16; 4] = Word::ones(40).into();
+        let left = [0x0u16, 0x00FF, 0xFFFF, 0xFFFF];
 
-        #[test]
-        fn word_to_u16_array() {
-            let right: [u16; 4] = Word::ones(40).into();
-            let left = [0x0, 0x00FF, 0xFFFF, 0xFFFF];
+        assert!(left
+            .iter()
+            .zip(right.iter())
+            .all(|(left, right)| left == right));
+    }
 
-            assert!(left
-                .iter()
-                .zip(right.iter())
-                .all(|(left, right)| left == right));
-        }
+    #[test]
+    fn u16_array_to_word() {
+        let right = Word::from([0x0u16, 0x00FF, 0xFFFF, 0xFFFF]);
+        let left = Word::ones(40);
 
-        #[test]
-        fn u16_array_to_word() {
-            let right = Word::from([0x0u16, 0x00FF, 0xFFFF, 0xFFFF]);
-            let left = Word::ones(40);
+        assert_eq!(left, right);
+    }
 
-            assert_eq!(left, right);
-        }
+    #[test]
+    fn word_to_u32_array() {
+        let right: [u32; 2] = Word::ones(32).into();
+        let left = [0x0, 0xFFFF_FFFF];
 
-        #[test]
-        fn word_to_u32_array() {
-            let right: [u32; 2] = Word::ones(32).into();
-            let left = [0x0, 0xFFFF_FFFF];
+        assert!(left
+            .iter()
+            .zip(right.iter())
+            .all(|(left, right)| left == right));
+    }
 
-            assert!(left
-                .iter()
-                .zip(right.iter())
-                .all(|(left, right)| left == right));
-        }
+    #[test]
+    fn u32_array_to_word() {
+        let right = Word::from([0x0, 0xFFFF_FFFF]);
+        let left = Word::ones(32);
 
-        #[test]
-        fn u32_array_to_word() {
-            let right = Word::from([0x0, 0xFFFF_FFFF]);
-            let left = Word::ones(32);
+        assert_eq!(left, right);
+    }
 
-            assert_eq!(left, right);
-        }
+    #[test]
+    fn word_to_u64() {
+        let right: u64 = Word::from(WORD_LEN_60).into();
+        let left = WORD_LEN_60;
 
-        #[test]
-        fn word_to_u64() {
-            let right: u64 = Word::from(WORD_LEN_60).into();
-            let left = WORD_LEN_60;
-
-            assert_eq!(left, right);
-        }
+        assert_eq!(left, right);
     }
 }
