@@ -7,8 +7,16 @@ name = "crypto-primitives"
 version = "0.3.1"
 
 [[package]]
+name = "des"
+version = "0.1.0"
+dependencies = [
+ "crypto-primitives",
+]
+
+[[package]]
 name = "symciph"
 version = "0.1.0"
 dependencies = [
  "crypto-primitives",
+ "des",
 ]

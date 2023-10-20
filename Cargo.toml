@@ -5,8 +5,10 @@ edition = "2021"
 
 [workspace]
 members = [
-    "crypto-primitives"
+    "crypto-primitives",
+    "des"
 ]
 
 [dependencies]
 crypto-primitives = { path = "./crypto-primitives" }
+des ={ path = "./des" }
