@@ -10,7 +10,8 @@ pub(crate) const COMPRESSED_KEY_LENGTH: usize = 48;
 
 pub(crate) const SUBKEY_LENGTH: usize = 28;
 
-pub(crate) const SHIFT_VALUES: [usize; NUM_ROUNDS] = [1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1];
+pub(crate) const SHIFT_VALUES: [usize; NUM_ROUNDS] =
+    [1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1];
 
 #[rustfmt::skip]
 pub(crate) const PC1_TABLE: [usize; REDUCED_KEY_LENGTH] = [
