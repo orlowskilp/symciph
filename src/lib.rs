@@ -1,6 +1,1 @@
-pub mod word;
-
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
-pub struct Word {
-    value: u64,
-}
+// I/O handling functions will be here.

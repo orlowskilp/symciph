@@ -1,6 +1,12 @@
 [package]
-name = "crypto-primitives"
-version = "0.3.1"
+name = "symciph"
+version = "0.1.0"
 edition = "2021"
 
+[workspace]
+members = [
+    "crypto-primitives"
+]
+
 [dependencies]
+crypto-primitives = { path = "./crypto-primitives" }
