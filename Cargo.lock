@@ -25,3 +25,6 @@ dependencies = [
 [[package]]
 name = "triple-des"
 version = "0.1.0"
+dependencies = [
+ "des",
+]
