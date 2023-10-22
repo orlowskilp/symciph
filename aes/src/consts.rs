@@ -2,6 +2,9 @@
 pub(super) const AES_BLOCK_SIZE: usize = 4;
 pub(super) const _BYTES_PER_WORD: usize = (u32::BITS / u8::BITS) as usize;
 
+// Key size in 32 byte words
+pub(super) const _AES_KEY_SIZE_128: usize = 4;
+
 pub(super) const AES_NUM_ROUNDS_128: usize = 11;
 pub(super) const AES_NUM_ROUNDS_192: usize = 13;
 pub(super) const AES_NUM_ROUNDS_256: usize = 15;
