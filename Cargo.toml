@@ -7,10 +7,12 @@ edition = "2021"
 members = [
     "crypto-primitives",
     "des",
-    "triple-des"
+    "triple-des",
+    "aes"
 ]
 
 [dependencies]
 crypto-primitives = { path = "./crypto-primitives" }
 des ={ path = "./des" }
 triple-des = { path = "./triple-des" }
+aes = { path = "./aes" }
