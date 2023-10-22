@@ -42,5 +42,5 @@
 	],
 	"remoteUser": "vscode",
 	"postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
-	"postStartCommand": "sudo chown 777 /var/run/docker.sock"
+	"postStartCommand": "sudo chmod 777 /var/run/docker.sock"
 }
