@@ -1,39 +1,93 @@
-use crate::consts::AES_NUM_ROUNDS_128;
+use crate::consts::{
+    AES_BLOCK_SIZE, AES_KEY_SIZE_128, AES_NUM_ROUNDS_128, BYTES_PER_WORD, RCON, SBOX,
+};
 
-use super::{Aes128KeyExpansionStrategy, AesBlock, AesKeyExpansionStrategy};
+use super::{super::Word, Aes128KeyExpansionStrategy, AesBlock, AesKeyExpansionStrategy};
 
 impl AesKeyExpansionStrategy for Aes128KeyExpansionStrategy {
     fn get_round_key(&self, round_num: usize) -> &AesBlock {
-        &self._round_keys[round_num]
+        &self.round_keys[round_num]
     }
 
     fn round_keys_num(&self) -> usize {
-        self._round_keys.len()
+        self.round_keys.len()
     }
 }
 
 impl Aes128KeyExpansionStrategy {
-    fn expand_key_128(_key_bytes: &[u8]) -> [AesBlock; AES_NUM_ROUNDS_128] {
-        unimplemented!("expand_key_128")
+    pub fn new(init_key: &[u8]) -> Self {
+        let round_keys = Self::expand_key_128(init_key);
+
+        Self { round_keys }
     }
 
-    pub fn new(init_key: &[u8]) -> Self {
-        let _round_keys = Self::expand_key_128(init_key);
+    fn initialize_key_schedule(key_bytes: &[u8]) -> AesBlock {
+        assert!(
+            key_bytes.len() == BYTES_PER_WORD * AES_KEY_SIZE_128,
+            "AES 128 Generate Key: Invalid key size"
+        );
 
-        Self { _round_keys }
+        let mut key = [Word::zero(); AES_KEY_SIZE_128];
+
+        for (word, key_word) in key.iter_mut().enumerate() {
+            let left_idx = BYTES_PER_WORD * word;
+            let right_idx = left_idx + BYTES_PER_WORD;
+
+            *key_word = Word::from(u32::from_be_bytes(
+                key_bytes[left_idx..right_idx]
+                    .try_into()
+                    // If the assertion above is affirmed, this will never happen
+                    .expect("🙀🧨 AES key generation failed. This was not supposed to happen."),
+            ));
+        }
+
+        key
+    }
+
+    fn continue_key_schedule(key: &[AesBlock], round: usize, word: usize) -> Word {
+        let prev_round_word = key[round - 1][word];
+
+        match word {
+            0 => {
+                let prev_round_last_word = key[round - 1][AES_BLOCK_SIZE - 1]
+                    .rotate_left(u8::BITS as usize, u32::BITS as usize)
+                    .substitute_bytes(BYTES_PER_WORD, &SBOX);
+                let round_constant = Word::from(RCON[round - 1]);
+
+                prev_round_word ^ prev_round_last_word ^ round_constant
+            }
+            _ => {
+                let prev_word = key[round][word - 1];
+
+                prev_round_word ^ prev_word
+            }
+        }
+    }
+
+    fn expand_key_128(key_bytes: &[u8]) -> [AesBlock; AES_NUM_ROUNDS_128] {
+        let mut key = [[Word::zero(); AES_BLOCK_SIZE]; AES_NUM_ROUNDS_128];
+
+        // Initialize AES-128 key schedule with the first 4 words of init key from bytes
+        key[0] = Self::initialize_key_schedule(key_bytes);
+
+        // Expand the rest of the words according to the AES-128 key schedule
+        for round in 1..AES_NUM_ROUNDS_128 {
+            for word in 0..AES_BLOCK_SIZE {
+                key[round][word] = Self::continue_key_schedule(&key, round, word);
+            }
+        }
+
+        key
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::consts::{_AES_KEY_SIZE_128, _BYTES_PER_WORD};
-
     use super::*;
 
-    #[ignore = "not implemented"]
     #[test]
     fn trivial_all_zeros() {
-        const AES128_KEYS: [[u32; AES_BLOCK_SIZE]; AES_NUM_ROUNDS_128] = [
+        const AES128_KEY_EXPANSION: [[u32; AES_BLOCK_SIZE]; AES_NUM_ROUNDS_128] = [
             [0x0, 0x0, 0x0, 0x0],
             [0x6263_6363, 0x6263_6363, 0x6263_6363, 0x6263_6363],
             [0x9B98_98C9, 0xF9FB_FBAA, 0x9B98_98C9, 0xF9FB_FBAA],
@@ -48,22 +102,21 @@ mod tests {
         ];
 
         let left =
-            Aes128KeyExpansionStrategy::expand_key_128(&[0x0; _AES_KEY_SIZE_128 * _BYTES_PER_WORD]);
+            Aes128KeyExpansionStrategy::expand_key_128(&[0x0; AES_KEY_SIZE_128 * BYTES_PER_WORD]);
         let mut right = [[Word::zero(); AES_BLOCK_SIZE]; AES_NUM_ROUNDS_128];
 
         for i in 0..left.len() {
             for j in 0..left[i].len() {
-                right[i][j] = Word::from(AES128_KEYS[i][j]);
+                right[i][j] = Word::from(AES128_KEY_EXPANSION[i][j]);
             }
         }
 
         assert_eq!(left, right);
     }
 
-    #[ignore = "not implemented"]
     #[test]
     fn trivial_all_ones() {
-        const AES128_KEYS: [[u32; AES_BLOCK_SIZE]; AES_NUM_ROUNDS_128] = [
+        const AES128_KEY_EXPANSION: [[u32; AES_BLOCK_SIZE]; AES_NUM_ROUNDS_128] = [
             [0xFFFF_FFFF, 0xFFFF_FFFF, 0xFFFF_FFFF, 0xFFFF_FFFF],
             [0xE8E9_E9E9, 0x1716_1616, 0xE8E9_E9E9, 0x1716_1616],
             [0xADAE_AE19, 0xBAB8_B80F, 0x5251_51E6, 0x4547_47F0],
@@ -78,22 +131,21 @@ mod tests {
         ];
 
         let left =
-            Aes128KeyExpansionStrategy::expand_key_128(&[0xFF; AES_BLOCK_SIZE * _BYTES_PER_WORD]);
-        let mut right = [[Word::zero(); _AES_KEY_SIZE_128]; AES_NUM_ROUNDS_128];
+            Aes128KeyExpansionStrategy::expand_key_128(&[0xFF; AES_KEY_SIZE_128 * BYTES_PER_WORD]);
+        let mut right = [[Word::zero(); AES_BLOCK_SIZE]; AES_NUM_ROUNDS_128];
 
         for i in 0..left.len() {
             for j in 0..left[i].len() {
-                right[i][j] = Word::from(AES128_KEYS[i][j]);
+                right[i][j] = Word::from(AES128_KEY_EXPANSION[i][j]);
             }
         }
 
         assert_eq!(left, right);
     }
 
-    #[ignore = "not implemented"]
     #[test]
     fn trivial_incremental_bytes() {
-        const AES128_KEYS: [[u32; AES_BLOCK_SIZE]; AES_NUM_ROUNDS_128] = [
+        const AES128_KEY_EXPANSION: [[u32; AES_BLOCK_SIZE]; AES_NUM_ROUNDS_128] = [
             [0x0001_0203, 0x0405_0607, 0x0809_0A0B, 0x0C0D_0E0F],
             [0xD6AA_74FD, 0xD2AF_72FA, 0xDAA6_78F1, 0xD6AB_76FE],
             [0xB692_CF0B, 0x643D_BDF1, 0xBE9B_C500, 0x6830_B3FE],
@@ -115,7 +167,7 @@ mod tests {
 
         for i in 0..left.len() {
             for j in 0..left[i].len() {
-                right[i][j] = Word::from(AES128_KEYS[i][j]);
+                right[i][j] = Word::from(AES128_KEY_EXPANSION[i][j]);
             }
         }
 

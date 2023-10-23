@@ -22,7 +22,7 @@ trait AesKeyExpansionStrategy {
 }
 
 struct Aes128KeyExpansionStrategy {
-    _round_keys: [AesBlock; AES_NUM_ROUNDS_128],
+    round_keys: [AesBlock; AES_NUM_ROUNDS_128],
 }
 
 struct Aes192KeyExpansionStrategy {
