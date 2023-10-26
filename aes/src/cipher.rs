@@ -53,21 +53,29 @@ impl AesCipher {
         out
     }
 
-    fn _sub_bytes(state: &AesBlock) -> AesBlock {
+    fn _sub_bytes(state: &AesBlock, inverse: bool) -> AesBlock {
+        let sbox = match inverse {
+            false => &SBOX,
+            true => &_INV_SBOX,
+        };
+
         let mut out = [Word::zero(); AES_BLOCK_SIZE];
 
         for row in 0..AES_BLOCK_SIZE {
-            out[row] = state[row].substitute_bytes(BYTES_PER_WORD, &SBOX);
+            out[row] = state[row].substitute_bytes(BYTES_PER_WORD, sbox);
         }
 
         out
     }
 
-    fn _shift_rows(state: &AesBlock) -> AesBlock {
+    fn _shift_rows(state: &AesBlock, inverse: bool) -> AesBlock {
         let mut out = [Word::zero(); AES_BLOCK_SIZE];
 
         for row in 0..AES_BLOCK_SIZE {
-            let rotate_by = row * u8::BITS as usize;
+            let rotate_by = match inverse {
+                false => row,
+                true => AES_BLOCK_SIZE - row,
+            } * u8::BITS as usize;
 
             out[row] = state[row].rotate_left(rotate_by, u32::BITS as usize);
         }
@@ -75,7 +83,7 @@ impl AesCipher {
         out
     }
 
-    fn _mix_columns(state: &AesBlock) -> AesBlock {
+    fn _mix_columns(state: &AesBlock, inverse: bool) -> AesBlock {
         let mut bytes = [[0u8; BYTES_PER_WORD]; AES_BLOCK_SIZE];
 
         for col in 0..AES_BLOCK_SIZE {
@@ -86,7 +94,7 @@ impl AesCipher {
 
         for row in 0..AES_BLOCK_SIZE {
             let column = [bytes[0][row], bytes[1][row], bytes[2][row], bytes[3][row]];
-            let mixed_column = _mix_column(&column);
+            let mixed_column = _mix_column(&column, inverse);
 
             for col in 0..BYTES_PER_WORD {
                 bytes[col][row] = mixed_column[col];
@@ -158,19 +166,46 @@ mod tests {
     mod sub_bytes {
         use super::*;
 
+        const SUB_BYTES_DATA_1: [u32; 4] = [0, 1, 2, 3];
+        const SUB_BYTES_DATA_2: [u32; 4] = [0x6363_6363, 0x6363_637C, 0x6363_6377, 0x6363_637B];
+
         #[test]
         fn incremental_bytes() {
-            let left = AesCipher::_sub_bytes(&[
-                Word::zero(),
-                Word::one(),
-                Word::from(2u8),
-                Word::from(3u8),
-            ]);
+            let left = AesCipher::_sub_bytes(
+                &[
+                    Word::from(SUB_BYTES_DATA_1[0]),
+                    Word::from(SUB_BYTES_DATA_1[1]),
+                    Word::from(SUB_BYTES_DATA_1[2]),
+                    Word::from(SUB_BYTES_DATA_1[3]),
+                ],
+                false,
+            );
             let right = [
-                Word::from(0x6363_6363u32),
-                Word::from(0x6363_637Cu32),
-                Word::from(0x6363_6377u32),
-                Word::from(0x6363_637Bu32),
+                Word::from(SUB_BYTES_DATA_2[0]),
+                Word::from(SUB_BYTES_DATA_2[1]),
+                Word::from(SUB_BYTES_DATA_2[2]),
+                Word::from(SUB_BYTES_DATA_2[3]),
+            ];
+
+            assert_eq!(left, right);
+        }
+
+        #[test]
+        fn inv_incremental_bytes() {
+            let left = AesCipher::_sub_bytes(
+                &[
+                    Word::from(SUB_BYTES_DATA_2[0]),
+                    Word::from(SUB_BYTES_DATA_2[1]),
+                    Word::from(SUB_BYTES_DATA_2[2]),
+                    Word::from(SUB_BYTES_DATA_2[3]),
+                ],
+                true,
+            );
+            let right = [
+                Word::from(SUB_BYTES_DATA_1[0]),
+                Word::from(SUB_BYTES_DATA_1[1]),
+                Word::from(SUB_BYTES_DATA_1[2]),
+                Word::from(SUB_BYTES_DATA_1[3]),
             ];
 
             assert_eq!(left, right);
@@ -180,28 +215,64 @@ mod tests {
     mod shift_rows {
         use super::*;
 
+        const SHIFT_ROWS_VAL: u32 = 0x8000_0000;
+        const SHIFT_ROWS_DATA_1: [u32; 4] = [1, 1 << 8, 1 << 16, 1 << 24];
+        const SHIFT_ROWS_DATA_2: [u32; 4] = [1 << 31, 1 << 7, 1 << 15, 1 << 23];
+
         #[test]
         fn trivial_four_ones() {
-            let left = AesCipher::_shift_rows(&[Word::one(); AES_BLOCK_SIZE]);
+            let left = AesCipher::_shift_rows(&[Word::one(); AES_BLOCK_SIZE], false);
             let right = [
-                Word::one(),
-                Word::one() << 8u8,
-                Word::one() << 16u8,
-                Word::one() << 24u8,
+                Word::from(SHIFT_ROWS_DATA_1[0]),
+                Word::from(SHIFT_ROWS_DATA_1[1]),
+                Word::from(SHIFT_ROWS_DATA_1[2]),
+                Word::from(SHIFT_ROWS_DATA_1[3]),
             ];
 
             assert_eq!(left, right);
         }
 
         #[test]
+        fn inv_trivial_four_ones() {
+            let left = AesCipher::_shift_rows(
+                &[
+                    Word::from(SHIFT_ROWS_DATA_1[0]),
+                    Word::from(SHIFT_ROWS_DATA_1[1]),
+                    Word::from(SHIFT_ROWS_DATA_1[2]),
+                    Word::from(SHIFT_ROWS_DATA_1[3]),
+                ],
+                true,
+            );
+            let right = [Word::one(); AES_BLOCK_SIZE];
+
+            assert_eq!(left, right);
+        }
+
+        #[test]
         fn four_0x80000000s() {
-            let left = AesCipher::_shift_rows(&[Word::from(0x8000_0000u32); AES_BLOCK_SIZE]);
+            let left = AesCipher::_shift_rows(&[Word::from(SHIFT_ROWS_VAL); AES_BLOCK_SIZE], false);
             let right = [
-                Word::one() << 31u8,
-                Word::one() << 7u8,
-                Word::one() << 15u8,
-                Word::one() << 23u8,
+                Word::from(SHIFT_ROWS_DATA_2[0]),
+                Word::from(SHIFT_ROWS_DATA_2[1]),
+                Word::from(SHIFT_ROWS_DATA_2[2]),
+                Word::from(SHIFT_ROWS_DATA_2[3]),
             ];
+
+            assert_eq!(left, right);
+        }
+
+        #[test]
+        fn inv_four_0x80000000s() {
+            let left = AesCipher::_shift_rows(
+                &[
+                    Word::from(SHIFT_ROWS_DATA_2[0]),
+                    Word::from(SHIFT_ROWS_DATA_2[1]),
+                    Word::from(SHIFT_ROWS_DATA_2[2]),
+                    Word::from(SHIFT_ROWS_DATA_2[3]),
+                ],
+                true,
+            );
+            let right = [Word::from(SHIFT_ROWS_VAL); AES_BLOCK_SIZE];
 
             assert_eq!(left, right);
         }
@@ -210,11 +281,24 @@ mod tests {
     mod mix_columns {
         use super::*;
 
+        const MIX_COLUMNS_DATA_1: [u32; 4] = [0xDBF2_D42D, 0x130A_D426, 0x5322_D431, 0x455C_D54C];
+        const MIX_COLUMNS_DATA_2: [u32; 4] = [0x8E9F_D54D, 0x4DDC_D57E, 0xA158_D7BD, 0xBC9D_D6F8];
+
         #[test]
         fn trivial_all_0x01s() {
             const INPUT: AesBlock = [Word::one(); AES_BLOCK_SIZE];
 
-            let left = AesCipher::_mix_columns(&INPUT);
+            let left = AesCipher::_mix_columns(&INPUT, false);
+            let right = INPUT;
+
+            assert_eq!(left, right);
+        }
+
+        #[test]
+        fn inv_trivial_all_0x01s() {
+            const INPUT: AesBlock = [Word::one(); AES_BLOCK_SIZE];
+
+            let left = AesCipher::_mix_columns(&INPUT, true);
             let right = INPUT;
 
             assert_eq!(left, right);
@@ -222,17 +306,41 @@ mod tests {
 
         #[test]
         fn nontrivial() {
-            let left = AesCipher::_mix_columns(&[
-                Word::from(0xDBF2_D42Du32),
-                Word::from(0x130A_D426u32),
-                Word::from(0x5322_D431u32),
-                Word::from(0x455C_D54Cu32),
-            ]);
+            let left = AesCipher::_mix_columns(
+                &[
+                    Word::from(MIX_COLUMNS_DATA_1[0]),
+                    Word::from(MIX_COLUMNS_DATA_1[1]),
+                    Word::from(MIX_COLUMNS_DATA_1[2]),
+                    Word::from(MIX_COLUMNS_DATA_1[3]),
+                ],
+                false,
+            );
             let right = [
-                Word::from(0x8E9F_D54Du32),
-                Word::from(0x4DDC_D57Eu32),
-                Word::from(0xA158_D7BDu32),
-                Word::from(0xBC9D_D6F8u32),
+                Word::from(MIX_COLUMNS_DATA_2[0]),
+                Word::from(MIX_COLUMNS_DATA_2[1]),
+                Word::from(MIX_COLUMNS_DATA_2[2]),
+                Word::from(MIX_COLUMNS_DATA_2[3]),
+            ];
+
+            assert_eq!(left, right);
+        }
+
+        #[test]
+        fn inv_nontrivial() {
+            let left = AesCipher::_mix_columns(
+                &[
+                    Word::from(MIX_COLUMNS_DATA_2[0]),
+                    Word::from(MIX_COLUMNS_DATA_2[1]),
+                    Word::from(MIX_COLUMNS_DATA_2[2]),
+                    Word::from(MIX_COLUMNS_DATA_2[3]),
+                ],
+                true,
+            );
+            let right = [
+                Word::from(MIX_COLUMNS_DATA_1[0]),
+                Word::from(MIX_COLUMNS_DATA_1[1]),
+                Word::from(MIX_COLUMNS_DATA_1[2]),
+                Word::from(MIX_COLUMNS_DATA_1[3]),
             ];
 
             assert_eq!(left, right);
