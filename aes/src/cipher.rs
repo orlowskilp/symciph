@@ -238,4 +238,94 @@ mod tests {
             assert_eq!(left, right);
         }
     }
+
+    mod encrypt_decrypt_aes128 {
+        use super::*;
+
+        const AES_KEY_SIZE_128: usize = 4;
+
+        #[rustfmt::skip]
+        const KEY: [u8; BYTES_PER_WORD * AES_KEY_SIZE_128] = [
+            0x2B, 0x7E, 0x15, 0x16,
+            0x28, 0xAE, 0xD2, 0xA6,
+            0xAB, 0xF7, 0x15, 0x88,
+            0x09, 0xCF, 0x4F, 0x3C,
+        ];
+        const PLAINTEXT: [u32; AES_BLOCK_SIZE] =
+            [0x3243_F6A8, 0x885A_308D, 0x3131_98A2, 0xE037_0734];
+        // TODO: Vet that this is correct
+        const CIPHERTEXT: [u32; AES_BLOCK_SIZE] =
+            [0xB822_FE47, 0x6F13_F2CA, 0x8211_ED45, 0xE337_5882];
+
+        fn helper_get_cipher() -> AesCipher {
+            AesCipher::new(&KEY, AesKeySize::Aes128)
+        }
+
+        #[ignore = "ciphertext not verified"]
+        #[test]
+        fn encrypt_block() {
+            let cipher = helper_get_cipher();
+
+            let plaintext = [
+                Word::from(PLAINTEXT[0]),
+                Word::from(PLAINTEXT[1]),
+                Word::from(PLAINTEXT[2]),
+                Word::from(PLAINTEXT[3]),
+            ];
+
+            let left = cipher.encrypt(&plaintext);
+            let right = [
+                Word::from(CIPHERTEXT[0]),
+                Word::from(CIPHERTEXT[1]),
+                Word::from(CIPHERTEXT[2]),
+                Word::from(CIPHERTEXT[3]),
+            ];
+
+            assert_eq!(left, right);
+        }
+
+        #[ignore = "not implemented"]
+        #[test]
+        fn decrypt_block() {
+            let cipher = helper_get_cipher();
+
+            let ciphertext = [
+                Word::from(CIPHERTEXT[0]),
+                Word::from(CIPHERTEXT[1]),
+                Word::from(CIPHERTEXT[2]),
+                Word::from(CIPHERTEXT[3]),
+            ];
+
+            let left = cipher.decrypt(&ciphertext);
+            let right = [
+                Word::from(PLAINTEXT[0]),
+                Word::from(PLAINTEXT[1]),
+                Word::from(PLAINTEXT[2]),
+                Word::from(PLAINTEXT[3]),
+            ];
+
+            assert_eq!(left, right);
+        }
+
+        #[ignore = "not implemented"]
+        #[test]
+        fn encrypt_then_decrypt_block() {
+            let cipher = helper_get_cipher();
+
+            let left = cipher.decrypt(&cipher.encrypt(&[
+                Word::from(PLAINTEXT[0]),
+                Word::from(PLAINTEXT[1]),
+                Word::from(PLAINTEXT[2]),
+                Word::from(PLAINTEXT[3]),
+            ]));
+            let right = [
+                Word::from(PLAINTEXT[0]),
+                Word::from(PLAINTEXT[1]),
+                Word::from(PLAINTEXT[2]),
+                Word::from(PLAINTEXT[3]),
+            ];
+
+            assert_eq!(left, right);
+        }
+    }
 }
