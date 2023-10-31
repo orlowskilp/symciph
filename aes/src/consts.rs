@@ -4,6 +4,7 @@ pub(super) const BYTES_PER_WORD: usize = (u32::BITS / u8::BITS) as usize;
 
 // Key size in 32 byte words
 pub(super) const AES_KEY_SIZE_128: usize = 4;
+pub(super) const _AES_KEY_SIZE_192: usize = 6;
 
 pub(super) const AES_NUM_ROUNDS_128: usize = 11;
 pub(super) const AES_NUM_ROUNDS_192: usize = 13;
