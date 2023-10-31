@@ -8,5 +8,5 @@ use key::AesKey;
 type AesBlock = [Word; consts::AES_BLOCK_SIZE];
 
 pub struct AesCipher {
-    _key: AesKey,
+    key: AesKey,
 }

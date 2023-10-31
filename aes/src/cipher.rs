@@ -1,14 +1,13 @@
 mod galois_field_ops;
 
 use super::{consts::*, key::AesKeySize, AesBlock, AesCipher, AesKey, Word};
-use galois_field_ops::_mix_column;
+use galois_field_ops::mix_column;
 
 impl AesCipher {
     pub fn new(init_key: &[u8], key_size: AesKeySize) -> Self {
-        // TODO: Rename _key to key
-        let _key = AesKey::new(init_key, key_size);
+        let key = AesKey::new(init_key, key_size);
 
-        Self { _key }
+        Self { key }
     }
 
     pub fn encrypt(&self, block: &[[u8; 8]; 2]) -> [[u8; 8]; 2] {
@@ -21,14 +20,6 @@ impl AesCipher {
         let aes_block = Self::to_aes_block(block);
 
         Self::from_aes_block(&self.decrypt_block(&aes_block))
-    }
-
-    fn encrypt_block(&self, _block: &AesBlock) -> AesBlock {
-        unimplemented!("AesCipher::encrypt_block")
-    }
-
-    fn decrypt_block(&self, _block: &AesBlock) -> AesBlock {
-        unimplemented!("AesCipher::decrypt_block")
     }
 
     fn to_aes_block(block: &[[u8; 8]; 2]) -> AesBlock {
@@ -53,10 +44,44 @@ impl AesCipher {
         out
     }
 
-    fn _sub_bytes(state: &AesBlock, inverse: bool) -> AesBlock {
+    fn encrypt_block(&self, block: &AesBlock) -> AesBlock {
+        let last_round = self.key.len() - 1;
+        let mut state = Self::add_round_key(block, &self.key[0]);
+
+        for round in 1..last_round {
+            state = Self::sub_bytes(&state, false);
+            state = Self::shift_rows(&state, false);
+            state = Self::mix_columns(&state, false);
+            state = Self::add_round_key(&state, &self.key[round]);
+        }
+
+        state = Self::sub_bytes(&state, false);
+        state = Self::shift_rows(&state, false);
+
+        Self::add_round_key(&state, &self.key[last_round])
+    }
+
+    fn decrypt_block(&self, block: &AesBlock) -> AesBlock {
+        let last_round = self.key.len() - 1;
+        let mut state = Self::add_round_key(block, &self.key[last_round]);
+
+        for round in (1..last_round).rev() {
+            state = Self::shift_rows(&state, true);
+            state = Self::sub_bytes(&state, true);
+            state = Self::add_round_key(&state, &self.key[round]);
+            state = Self::mix_columns(&state, true);
+        }
+
+        state = Self::shift_rows(&state, true);
+        state = Self::sub_bytes(&state, true);
+
+        Self::add_round_key(&state, &self.key[0])
+    }
+
+    fn sub_bytes(state: &AesBlock, inverse: bool) -> AesBlock {
         let sbox = match inverse {
             false => &SBOX,
-            true => &_INV_SBOX,
+            true => &INV_SBOX,
         };
 
         let mut out = [Word::zero(); AES_BLOCK_SIZE];
@@ -68,7 +93,7 @@ impl AesCipher {
         out
     }
 
-    fn _shift_rows(state: &AesBlock, inverse: bool) -> AesBlock {
+    fn shift_rows(state: &AesBlock, inverse: bool) -> AesBlock {
         let mut out = [Word::zero(); AES_BLOCK_SIZE];
 
         for row in 0..AES_BLOCK_SIZE {
@@ -83,7 +108,7 @@ impl AesCipher {
         out
     }
 
-    fn _mix_columns(state: &AesBlock, inverse: bool) -> AesBlock {
+    fn mix_columns(state: &AesBlock, inverse: bool) -> AesBlock {
         let mut bytes = [[0u8; BYTES_PER_WORD]; AES_BLOCK_SIZE];
 
         for col in 0..AES_BLOCK_SIZE {
@@ -94,7 +119,7 @@ impl AesCipher {
 
         for row in 0..AES_BLOCK_SIZE {
             let column = [bytes[0][row], bytes[1][row], bytes[2][row], bytes[3][row]];
-            let mixed_column = _mix_column(&column, inverse);
+            let mixed_column = mix_column(&column, inverse);
 
             for col in 0..BYTES_PER_WORD {
                 bytes[col][row] = mixed_column[col];
@@ -108,7 +133,7 @@ impl AesCipher {
         out
     }
 
-    fn _add_round_key(state: &AesBlock, round_key: &AesBlock) -> AesBlock {
+    fn add_round_key(state: &AesBlock, round_key: &AesBlock) -> AesBlock {
         let mut out = [Word::zero(); AES_BLOCK_SIZE];
 
         for word in 0..AES_BLOCK_SIZE {
@@ -171,7 +196,7 @@ mod tests {
 
         #[test]
         fn incremental_bytes() {
-            let left = AesCipher::_sub_bytes(
+            let left = AesCipher::sub_bytes(
                 &[
                     Word::from(SUB_BYTES_DATA_1[0]),
                     Word::from(SUB_BYTES_DATA_1[1]),
@@ -192,7 +217,7 @@ mod tests {
 
         #[test]
         fn inv_incremental_bytes() {
-            let left = AesCipher::_sub_bytes(
+            let left = AesCipher::sub_bytes(
                 &[
                     Word::from(SUB_BYTES_DATA_2[0]),
                     Word::from(SUB_BYTES_DATA_2[1]),
@@ -221,7 +246,7 @@ mod tests {
 
         #[test]
         fn trivial_four_ones() {
-            let left = AesCipher::_shift_rows(&[Word::one(); AES_BLOCK_SIZE], false);
+            let left = AesCipher::shift_rows(&[Word::one(); AES_BLOCK_SIZE], false);
             let right = [
                 Word::from(SHIFT_ROWS_DATA_1[0]),
                 Word::from(SHIFT_ROWS_DATA_1[1]),
@@ -234,7 +259,7 @@ mod tests {
 
         #[test]
         fn inv_trivial_four_ones() {
-            let left = AesCipher::_shift_rows(
+            let left = AesCipher::shift_rows(
                 &[
                     Word::from(SHIFT_ROWS_DATA_1[0]),
                     Word::from(SHIFT_ROWS_DATA_1[1]),
@@ -250,7 +275,7 @@ mod tests {
 
         #[test]
         fn four_0x80000000s() {
-            let left = AesCipher::_shift_rows(&[Word::from(SHIFT_ROWS_VAL); AES_BLOCK_SIZE], false);
+            let left = AesCipher::shift_rows(&[Word::from(SHIFT_ROWS_VAL); AES_BLOCK_SIZE], false);
             let right = [
                 Word::from(SHIFT_ROWS_DATA_2[0]),
                 Word::from(SHIFT_ROWS_DATA_2[1]),
@@ -263,7 +288,7 @@ mod tests {
 
         #[test]
         fn inv_four_0x80000000s() {
-            let left = AesCipher::_shift_rows(
+            let left = AesCipher::shift_rows(
                 &[
                     Word::from(SHIFT_ROWS_DATA_2[0]),
                     Word::from(SHIFT_ROWS_DATA_2[1]),
@@ -288,7 +313,7 @@ mod tests {
         fn trivial_all_0x01s() {
             const INPUT: AesBlock = [Word::one(); AES_BLOCK_SIZE];
 
-            let left = AesCipher::_mix_columns(&INPUT, false);
+            let left = AesCipher::mix_columns(&INPUT, false);
             let right = INPUT;
 
             assert_eq!(left, right);
@@ -298,7 +323,7 @@ mod tests {
         fn inv_trivial_all_0x01s() {
             const INPUT: AesBlock = [Word::one(); AES_BLOCK_SIZE];
 
-            let left = AesCipher::_mix_columns(&INPUT, true);
+            let left = AesCipher::mix_columns(&INPUT, true);
             let right = INPUT;
 
             assert_eq!(left, right);
@@ -306,7 +331,7 @@ mod tests {
 
         #[test]
         fn nontrivial() {
-            let left = AesCipher::_mix_columns(
+            let left = AesCipher::mix_columns(
                 &[
                     Word::from(MIX_COLUMNS_DATA_1[0]),
                     Word::from(MIX_COLUMNS_DATA_1[1]),
@@ -327,7 +352,7 @@ mod tests {
 
         #[test]
         fn inv_nontrivial() {
-            let left = AesCipher::_mix_columns(
+            let left = AesCipher::mix_columns(
                 &[
                     Word::from(MIX_COLUMNS_DATA_2[0]),
                     Word::from(MIX_COLUMNS_DATA_2[1]),
@@ -369,7 +394,6 @@ mod tests {
             AesCipher::new(&KEY, AesKeySize::Aes128)
         }
 
-        #[ignore = "ciphertext not verified"]
         #[test]
         fn encrypt_block() {
             let cipher = helper_get_cipher();
@@ -381,7 +405,7 @@ mod tests {
                 Word::from(PLAINTEXT[3]),
             ];
 
-            let left = cipher.encrypt(&plaintext);
+            let left = cipher.encrypt_block(&plaintext);
             let right = [
                 Word::from(CIPHERTEXT[0]),
                 Word::from(CIPHERTEXT[1]),
@@ -392,7 +416,6 @@ mod tests {
             assert_eq!(left, right);
         }
 
-        #[ignore = "not implemented"]
         #[test]
         fn decrypt_block() {
             let cipher = helper_get_cipher();
@@ -404,7 +427,7 @@ mod tests {
                 Word::from(CIPHERTEXT[3]),
             ];
 
-            let left = cipher.decrypt(&ciphertext);
+            let left = cipher.decrypt_block(&ciphertext);
             let right = [
                 Word::from(PLAINTEXT[0]),
                 Word::from(PLAINTEXT[1]),
@@ -415,12 +438,11 @@ mod tests {
             assert_eq!(left, right);
         }
 
-        #[ignore = "not implemented"]
         #[test]
         fn encrypt_then_decrypt_block() {
             let cipher = helper_get_cipher();
 
-            let left = cipher.decrypt(&cipher.encrypt(&[
+            let left = cipher.decrypt_block(&&cipher.encrypt_block(&[
                 Word::from(PLAINTEXT[0]),
                 Word::from(PLAINTEXT[1]),
                 Word::from(PLAINTEXT[2]),

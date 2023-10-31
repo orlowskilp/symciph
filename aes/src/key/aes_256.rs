@@ -4,11 +4,11 @@ use super::{Aes256KeyExpansionStrategy, AesBlock, AesKeyExpansionStrategy};
 
 impl AesKeyExpansionStrategy for Aes256KeyExpansionStrategy {
     fn get_round_key(&self, round_num: usize) -> &AesBlock {
-        &self._round_keys[round_num]
+        &self.round_keys[round_num]
     }
 
     fn round_keys_num(&self) -> usize {
-        self._round_keys.len()
+        self.round_keys.len()
     }
 }
 
@@ -18,8 +18,8 @@ impl Aes256KeyExpansionStrategy {
     }
 
     pub fn new(init_key: &[u8]) -> Self {
-        let _round_keys = Self::expand_key_256(init_key);
+        let round_keys = Self::expand_key_256(init_key);
 
-        Self { _round_keys }
+        Self { round_keys }
     }
 }
