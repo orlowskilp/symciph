@@ -373,12 +373,12 @@ mod tests {
     }
 
     const PLAINTEXT: [u32; AES_BLOCK_SIZE] = [0x3243_F6A8, 0x885A_308D, 0x3131_98A2, 0xE037_0734];
-    const CIPHERTEXT: [u32; AES_BLOCK_SIZE] = [0xB822_FE47, 0x6F13_F2CA, 0x8211_ED45, 0xE337_5882];
 
     mod encrypt_decrypt_aes128 {
         use super::*;
 
-        const AES_KEY_SIZE_128: usize = 4;
+        const CIPHERTEXT: [u32; AES_BLOCK_SIZE] =
+            [0xB822_FE47, 0x6F13_F2CA, 0x8211_ED45, 0xE337_5882];
 
         #[rustfmt::skip]
         const KEY: [u8; BYTES_PER_WORD * AES_KEY_SIZE_128] = [
@@ -464,7 +464,7 @@ mod tests {
             [0x0157_B159, 0xC778_A975, 0xC8EE_71BE, 0x4973_CCE1];
 
         #[rustfmt::skip]
-        const KEY: [u8; BYTES_PER_WORD * _AES_KEY_SIZE_192] = [
+        const KEY: [u8; BYTES_PER_WORD * AES_KEY_SIZE_192] = [
             0x2B, 0x7E, 0x15, 0x16,
             0x28, 0xAE, 0xD2, 0xA6,
             0xAB, 0xF7, 0x15, 0x88,
@@ -477,7 +477,6 @@ mod tests {
             AesCipher::new(&KEY, AesKeySize::Aes192)
         }
 
-        #[ignore = "not implemented"]
         #[test]
         fn encrypt_block() {
             let cipher = helper_get_cipher();
@@ -500,7 +499,6 @@ mod tests {
             assert_eq!(left, right);
         }
 
-        #[ignore = "not implemented"]
         #[test]
         fn decrypt_block() {
             let cipher = helper_get_cipher();
@@ -523,7 +521,6 @@ mod tests {
             assert_eq!(left, right);
         }
 
-        #[ignore = "not implemented"]
         #[test]
         fn encrypt_then_decrypt_block() {
             let cipher = helper_get_cipher();

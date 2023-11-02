@@ -1,6 +1,10 @@
-use crate::consts::AES_NUM_ROUNDS_192;
+use crate::consts::{
+    AES_BLOCK_SIZE, AES_KEY_SIZE_192, AES_NUM_ROUNDS_192, BYTES_PER_WORD, RCON, SBOX,
+};
 
-use super::{Aes192KeyExpansionStrategy, AesBlock, AesKeyExpansionStrategy};
+use super::{super::Word, Aes192KeyExpansionStrategy, AesBlock, AesKeyExpansionStrategy};
+
+const NUM_WORDS: usize = AES_BLOCK_SIZE * AES_NUM_ROUNDS_192;
 
 impl AesKeyExpansionStrategy for Aes192KeyExpansionStrategy {
     fn get_round_key(&self, round_num: usize) -> &AesBlock {
@@ -13,24 +17,81 @@ impl AesKeyExpansionStrategy for Aes192KeyExpansionStrategy {
 }
 
 impl Aes192KeyExpansionStrategy {
-    fn expand_key_192(_key_bytes: &[u8]) -> [AesBlock; AES_NUM_ROUNDS_192] {
-        unimplemented!("expand_key_192")
-    }
-
     pub fn new(init_key: &[u8]) -> Self {
         let round_keys = Self::expand_key_192(init_key);
 
         Self { round_keys }
+    }
+
+    fn initialize_key_schedule(key_bytes: &[u8]) -> [Word; AES_KEY_SIZE_192] {
+        assert!(
+            key_bytes.len() == BYTES_PER_WORD * AES_KEY_SIZE_192,
+            "AES 192 Generate Key: Invalid key size"
+        );
+
+        let mut key_words = [Word::zero(); AES_KEY_SIZE_192];
+
+        for (word, key_word) in key_words.iter_mut().enumerate() {
+            let left_idx = BYTES_PER_WORD * word;
+            let right_idx = left_idx + BYTES_PER_WORD;
+
+            *key_word = Word::from(u32::from_be_bytes(
+                key_bytes[left_idx..right_idx].try_into().expect(
+                    // If the assertion above is affirmed, this will never happen
+                    "🙀🧨 AES key generation failed. This was not supposed to happen.",
+                ),
+            ));
+        }
+
+        key_words
+    }
+
+    fn continue_key_schedule(key_words: &[Word], word_index: usize) -> Word {
+        match word_index {
+            word if word % AES_KEY_SIZE_192 == 0 => {
+                let prev_round_word = key_words[word - AES_KEY_SIZE_192];
+                let prev_word_transformed = key_words[word - 1]
+                    .rotate_left(u8::BITS as usize, u32::BITS as usize)
+                    .substitute_bytes(BYTES_PER_WORD, &SBOX);
+                let round_constant = Word::from(RCON[word / AES_KEY_SIZE_192 - 1]);
+
+                prev_round_word ^ prev_word_transformed ^ round_constant
+            }
+            _ => {
+                let prev_round_word = key_words[word_index - AES_KEY_SIZE_192];
+                let prev_word = key_words[word_index - 1];
+
+                prev_round_word ^ prev_word
+            }
+        }
+    }
+
+    fn expand_key_192(key_bytes: &[u8]) -> [AesBlock; AES_NUM_ROUNDS_192] {
+        let mut key_words = [Word::zero(); NUM_WORDS];
+
+        // Initialize AES-192 key schedule with the first 6 words of init key from bytes
+        key_words[..AES_KEY_SIZE_192].copy_from_slice(&Self::initialize_key_schedule(key_bytes));
+
+        // Expand the rest of the words according to AES-192 key schedule
+        for word in AES_KEY_SIZE_192..NUM_WORDS {
+            key_words[word] = Self::continue_key_schedule(&key_words, word);
+        }
+
+        // NOTE: There certainly must be a better way to do this. I got stuck operating on 2D arrays
+        unsafe {
+            use core::mem::transmute;
+
+            // SAFETY: The number of words in key_words is exactly the number of words in
+            //         AesBlock * AES_NUM_ROUNDS_192
+            transmute::<[Word; NUM_WORDS], [AesBlock; AES_NUM_ROUNDS_192]>(key_words)
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::consts::{AES_BLOCK_SIZE, BYTES_PER_WORD, _AES_KEY_SIZE_192};
-    use crypto_primitives::Word;
 
-    #[ignore = "not implemented"]
     #[test]
     fn trivial_all_zeros() {
         const AES192_KEYS: [[u32; AES_BLOCK_SIZE]; AES_NUM_ROUNDS_192] = [
@@ -50,7 +111,7 @@ mod tests {
         ];
 
         let left =
-            Aes192KeyExpansionStrategy::expand_key_192(&[0x0; _AES_KEY_SIZE_192 * BYTES_PER_WORD]);
+            Aes192KeyExpansionStrategy::expand_key_192(&[0x0; AES_KEY_SIZE_192 * BYTES_PER_WORD]);
         let mut right = [[Word::zero(); AES_BLOCK_SIZE]; AES_NUM_ROUNDS_192];
 
         for i in 0..left.len() {
@@ -59,10 +120,9 @@ mod tests {
             }
         }
 
-        assert_eq!(left, right);
+        assert_eq!(left, right)
     }
 
-    #[ignore = "not implemented"]
     #[test]
     fn trivial_all_ones() {
         const AES192_KEYS: [[u32; AES_BLOCK_SIZE]; AES_NUM_ROUNDS_192] = [
@@ -82,7 +142,7 @@ mod tests {
         ];
 
         let left =
-            Aes192KeyExpansionStrategy::expand_key_192(&[0xFF; _AES_KEY_SIZE_192 * BYTES_PER_WORD]);
+            Aes192KeyExpansionStrategy::expand_key_192(&[0xFF; AES_KEY_SIZE_192 * BYTES_PER_WORD]);
         let mut right = [[Word::zero(); AES_BLOCK_SIZE]; AES_NUM_ROUNDS_192];
 
         for i in 0..left.len() {
@@ -94,7 +154,6 @@ mod tests {
         assert_eq!(left, right);
     }
 
-    #[ignore = "not implemented"]
     #[test]
     fn trivial_incremental_bytes() {
         const AES192_KEYS: [[u32; AES_BLOCK_SIZE]; AES_NUM_ROUNDS_192] = [
