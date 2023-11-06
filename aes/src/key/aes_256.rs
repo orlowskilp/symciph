@@ -1,6 +1,10 @@
-use crate::consts::AES_NUM_ROUNDS_256;
+use crate::consts::{
+    AES_BLOCK_SIZE, AES_KEY_SIZE_256, AES_NUM_ROUNDS_256, BYTES_PER_WORD, RCON, SBOX,
+};
 
-use super::{Aes256KeyExpansionStrategy, AesBlock, AesKeyExpansionStrategy};
+use super::{super::Word, Aes256KeyExpansionStrategy, AesBlock, AesKeyExpansionStrategy};
+
+const INIT_ROUNDS: usize = 2;
 
 impl AesKeyExpansionStrategy for Aes256KeyExpansionStrategy {
     fn get_round_key(&self, round_num: usize) -> &AesBlock {
@@ -13,26 +17,95 @@ impl AesKeyExpansionStrategy for Aes256KeyExpansionStrategy {
 }
 
 impl Aes256KeyExpansionStrategy {
-    fn expand_key_256(_key_bytes: &[u8]) -> [AesBlock; AES_NUM_ROUNDS_256] {
-        unimplemented!("expand_key_256")
-    }
-
     pub fn new(init_key: &[u8]) -> Self {
         let round_keys = Self::expand_key_256(init_key);
 
         Self { round_keys }
     }
+
+    fn initialize_key_schedule(key_bytes: &[u8], init_round_num: usize) -> AesBlock {
+        assert!(
+            key_bytes.len() == BYTES_PER_WORD * AES_KEY_SIZE_256,
+            "AES 256 Generate Key: Invalid key size"
+        );
+
+        assert!(
+            init_round_num < INIT_ROUNDS,
+            "AES 256 Initialize Key Schedule: Only the first two are initialization rounds"
+        );
+
+        let mut key = [Word::zero(); AES_BLOCK_SIZE];
+
+        for (word, key_word) in key.iter_mut().enumerate() {
+            let offset = init_round_num * BYTES_PER_WORD * AES_BLOCK_SIZE;
+
+            let left_idx = offset + BYTES_PER_WORD * word;
+            let right_idx = left_idx + BYTES_PER_WORD;
+
+            *key_word = Word::from(u32::from_be_bytes(
+                key_bytes[left_idx..right_idx]
+                    .try_into()
+                    // If the assertion above is affirmed, this will never happen
+                    .expect("🙀🧨 AES key generation failed. This was not supposed to happen."),
+            ));
+        }
+
+        key
+    }
+
+    fn continue_key_schedule(key: &[AesBlock], round: usize, word: usize) -> Word {
+        let is_round_even = round % 2 == 0;
+        let two_rounds_back_word = key[round - 2][word];
+
+        match word {
+            0 if is_round_even => {
+                let prev_word = key[round - 1][AES_BLOCK_SIZE - 1];
+                let substituted_word = prev_word
+                    .rotate_left(u8::BITS as usize, u32::BITS as usize)
+                    .substitute_bytes(BYTES_PER_WORD, &SBOX);
+                let round_constant = Word::from(RCON[round / 2 - 1]);
+
+                two_rounds_back_word ^ substituted_word ^ round_constant
+            }
+            0 if !is_round_even => {
+                let prev_word = key[round - 1][AES_BLOCK_SIZE - 1];
+                let substituted_word = prev_word.substitute_bytes(BYTES_PER_WORD, &SBOX);
+
+                two_rounds_back_word ^ substituted_word
+            }
+            _ => {
+                let prev_word = key[round][word - 1];
+
+                two_rounds_back_word ^ prev_word
+            }
+        }
+    }
+
+    fn expand_key_256(key_bytes: &[u8]) -> [AesBlock; AES_NUM_ROUNDS_256] {
+        let mut key = [[Word::zero(); AES_BLOCK_SIZE]; AES_NUM_ROUNDS_256];
+
+        // Initialize AES-256 key schedule with the first 8 words of init key from bytes.
+        // I.e. first round key is the first half of the init key, and the second round key is the
+        // second half of the init key.
+        for (init_round_no, init_round) in key.iter_mut().enumerate().take(INIT_ROUNDS) {
+            *init_round = Self::initialize_key_schedule(key_bytes, init_round_no);
+        }
+
+        // Expand the rest of the words according to the AES-256 key schedule
+        for round in 2..AES_NUM_ROUNDS_256 {
+            for word in 0..AES_BLOCK_SIZE {
+                key[round][word] = Self::continue_key_schedule(&key, round, word);
+            }
+        }
+
+        key
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crypto_primitives::Word;
-
-    use crate::consts::{AES_BLOCK_SIZE, BYTES_PER_WORD, _AES_KEY_SIZE_256};
-
     use super::*;
 
-    #[ignore = "not implemented"]
     #[test]
     fn trivial_all_zeros() {
         const AES256_KEYS: [[u32; AES_BLOCK_SIZE]; AES_NUM_ROUNDS_256] = [
@@ -54,7 +127,7 @@ mod tests {
         ];
 
         let left =
-            Aes256KeyExpansionStrategy::expand_key_256(&[0x0; _AES_KEY_SIZE_256 * BYTES_PER_WORD]);
+            Aes256KeyExpansionStrategy::expand_key_256(&[0x0; AES_KEY_SIZE_256 * BYTES_PER_WORD]);
         let mut right = [[Word::zero(); AES_BLOCK_SIZE]; AES_NUM_ROUNDS_256];
 
         for i in 0..left.len() {
@@ -66,7 +139,6 @@ mod tests {
         assert_eq!(left, right)
     }
 
-    #[ignore = "not implemented"]
     #[test]
     fn trivial_all_ones() {
         const AES256_KEYS: [[u32; AES_BLOCK_SIZE]; AES_NUM_ROUNDS_256] = [
@@ -88,7 +160,7 @@ mod tests {
         ];
 
         let left =
-            Aes256KeyExpansionStrategy::expand_key_256(&[0xFF; _AES_KEY_SIZE_256 * BYTES_PER_WORD]);
+            Aes256KeyExpansionStrategy::expand_key_256(&[0xFF; AES_KEY_SIZE_256 * BYTES_PER_WORD]);
         let mut right = [[Word::zero(); AES_BLOCK_SIZE]; AES_NUM_ROUNDS_256];
 
         for i in 0..left.len() {
@@ -100,7 +172,6 @@ mod tests {
         assert_eq!(left, right);
     }
 
-    #[ignore = "not implemented"]
     #[test]
     fn trivial_incremental_bytes() {
         const AES256_KEYS: [[u32; AES_BLOCK_SIZE]; AES_NUM_ROUNDS_256] = [
