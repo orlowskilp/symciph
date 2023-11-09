@@ -1,5 +1,7 @@
-// The CLI entry point will be in this file.
+use symciph::App;
 
 fn main() {
-    println!("Hello, world!");
+    if let Err(err) = App::new().run() {
+        eprint!("Error: {}", err);
+    }
 }

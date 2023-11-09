@@ -12,6 +12,7 @@ members = [
 ]
 
 [dependencies]
+clap = { version = "4.4.7", features = ["derive"] }
 crypto-primitives = { path = "./crypto-primitives" }
 des ={ path = "./des" }
 triple-des = { path = "./triple-des" }
