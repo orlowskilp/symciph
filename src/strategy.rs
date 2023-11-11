@@ -10,7 +10,7 @@ impl EncryptionSchemes {
         todo!("Implement factory method")
     }
 
-    pub const fn _key_size(&self) -> usize {
+    pub const fn key_size(&self) -> usize {
         match self {
             Self::Des => 1,
             Self::Tdes => 3,

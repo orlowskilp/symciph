@@ -17,3 +17,4 @@ crypto-primitives = { path = "./crypto-primitives" }
 des ={ path = "./des" }
 triple-des = { path = "./triple-des" }
 aes = { path = "./aes" }
+rand = "0.8.5"
