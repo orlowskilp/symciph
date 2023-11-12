@@ -4,16 +4,16 @@ use crate::DataChunk;
 
 use super::EncryptionStrategy;
 
-const _DES_KEY_CHUNKS: usize = 1;
+const DES_KEY_CHUNKS: usize = 1;
 
 pub(super) struct DesEncryptionStrategy {
     scheme: DesCipher,
 }
 
 impl DesEncryptionStrategy {
-    pub fn _new(key_bytes: &[DataChunk]) -> Self {
+    pub fn new(key_bytes: &[DataChunk]) -> Self {
         assert!(
-            key_bytes.len() == _DES_KEY_CHUNKS,
+            key_bytes.len() == DES_KEY_CHUNKS,
             "DES: Key not 64 bits long"
         );
 
@@ -52,12 +52,11 @@ mod tests {
 
     use super::*;
 
-    const DES_CIPHERTEXT: [DataChunk; _DES_KEY_CHUNKS] =
-        [[0x4E, 0x7F, 0x27, 0xC3, 0x9C, 0x0F, 0xF0, 0x2B]; _DES_KEY_CHUNKS];
+    const DES_CIPHERTEXT: [DataChunk; 1] = [[0x4E, 0x7F, 0x27, 0xC3, 0x9C, 0x0F, 0xF0, 0x2B]; 1];
 
     #[test]
     fn encrypt() {
-        let strategy = DesEncryptionStrategy::_new(&KEY_64_BITS);
+        let strategy = DesEncryptionStrategy::new(&KEY_64_BITS);
         let ciphertext = strategy.encrypt(&PLAINTEXT_64_BITS);
 
         let left = ciphertext[0];
@@ -68,7 +67,7 @@ mod tests {
 
     #[test]
     fn decrypt() {
-        let strategy = DesEncryptionStrategy::_new(&KEY_64_BITS);
+        let strategy = DesEncryptionStrategy::new(&KEY_64_BITS);
         let plaintext = strategy.decrypt(&DES_CIPHERTEXT);
 
         let left = plaintext[0];

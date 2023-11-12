@@ -6,6 +6,8 @@ use std::io::Result;
 
 use super::Commands;
 
+const READ_BUFFER_LEN: usize = 2;
+
 trait Command {
     fn run(&self) -> Result<()>;
 }

@@ -10,9 +10,9 @@ pub trait EncryptionStrategy {
 }
 
 impl EncryptionSchemes {
-    pub fn _strategy(&self, key_bytes: &[DataChunk]) -> Box<dyn EncryptionStrategy> {
+    pub fn strategy(&self, key_bytes: &[DataChunk]) -> Box<dyn EncryptionStrategy> {
         match self {
-            Self::Des => Box::new(DesEncryptionStrategy::_new(key_bytes)),
+            Self::Des => Box::new(DesEncryptionStrategy::new(key_bytes)),
             _ => todo!("Implement remaining encryption strategies"),
         }
     }
