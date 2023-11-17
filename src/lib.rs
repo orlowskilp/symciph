@@ -1,13 +1,13 @@
 mod command;
+pub mod io;
 mod strategy;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::io::Result;
 
-type _Byte = u8;
-type _DataChunk = [_Byte; _BLOCK_CHUNK_SIZE];
+type DataChunk = [u8; BLOCK_CHUNK_SIZE];
 
-const _BLOCK_CHUNK_SIZE: usize = 8;
+const BLOCK_CHUNK_SIZE: usize = 8;
 
 #[derive(Parser)]
 #[command(author, version)]

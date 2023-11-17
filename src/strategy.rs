@@ -1,12 +1,12 @@
-use super::{EncryptionSchemes, _DataChunk};
+use super::{DataChunk, EncryptionSchemes};
 
 pub trait EncryptionStrategy {
-    fn encrypt(&self, plaintext: &[_DataChunk]) -> Vec<_DataChunk>;
-    fn decrypt(&self, ciphertext: &[_DataChunk]) -> Vec<_DataChunk>;
+    fn encrypt(&self, plaintext: &[DataChunk]) -> Vec<DataChunk>;
+    fn decrypt(&self, ciphertext: &[DataChunk]) -> Vec<DataChunk>;
 }
 
 impl EncryptionSchemes {
-    pub fn _strategy(&self, _key_bytes: &[_DataChunk]) -> Box<dyn EncryptionStrategy> {
+    pub fn _strategy(&self, _key_bytes: &[DataChunk]) -> Box<dyn EncryptionStrategy> {
         todo!("Implement factory method")
     }
 
