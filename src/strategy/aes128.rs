@@ -1,12 +1,11 @@
-use aes::key::AesKeySize;
-use aes::AesCipher;
+use aes::{key::AesKeySize, AesCipher};
 
 use crate::DataChunk;
 
-use super::EncryptionStrategy;
-
-const AES128_KEY_CHUNKS: usize = 2;
-const AES_BLOCK_CHUNKS: usize = 2;
+use super::{
+    aes_commons::{aes_decrypt, aes_encrypt, init_aes_scheme},
+    EncryptionStrategy,
+};
 
 pub(super) struct Aes128EncryptionStrategy {
     scheme: AesCipher,
@@ -14,21 +13,7 @@ pub(super) struct Aes128EncryptionStrategy {
 
 impl Aes128EncryptionStrategy {
     pub fn new(key_bytes: &[DataChunk]) -> Self {
-        const KEY_BITS_LEN: usize = AES128_KEY_CHUNKS * u8::BITS as usize;
-        assert!(
-            key_bytes.len() == AES128_KEY_CHUNKS,
-            "AES128: Key not 128 bits long"
-        );
-
-        let key = &mut [0u8; KEY_BITS_LEN];
-        for (i, key_chunk) in key_bytes.iter().enumerate() {
-            let left = i * (KEY_BITS_LEN / 2);
-            let right = left + KEY_BITS_LEN / 2;
-
-            key[left..right].copy_from_slice(key_chunk);
-        }
-
-        let scheme = AesCipher::new(key, AesKeySize::Aes128);
+        let scheme = init_aes_scheme(key_bytes, AesKeySize::Aes128);
 
         Self { scheme }
     }
@@ -36,49 +21,20 @@ impl Aes128EncryptionStrategy {
 
 impl EncryptionStrategy for Aes128EncryptionStrategy {
     fn encrypt(&self, plaintext: &[DataChunk]) -> Vec<DataChunk> {
-        assert!(
-            plaintext.len() % 2 == 0,
-            "AES128: Plaintext buffer not multiple of 128 bits"
-        );
-
-        let mut ciphertext_blocks: Vec<DataChunk> = Vec::new();
-
-        for i in (0..plaintext.len()).step_by(AES_BLOCK_CHUNKS) {
-            let plaintext_block = [plaintext[i], plaintext[i + 1]];
-            let aes_ciphertext_block = self.scheme.encrypt(&plaintext_block);
-
-            for aes_block in aes_ciphertext_block.iter() {
-                ciphertext_blocks.push(*aes_block);
-            }
-        }
-
-        ciphertext_blocks
+        aes_encrypt(&self.scheme, plaintext)
     }
 
     fn decrypt(&self, ciphertext: &[DataChunk]) -> Vec<DataChunk> {
-        assert!(
-            ciphertext.len() % 2 == 0,
-            "AES128: Ciphertext buffer not multiple of 128 bits"
-        );
-
-        let mut plaintext_blocks: Vec<DataChunk> = Vec::new();
-
-        for i in (0..ciphertext.len()).step_by(AES_BLOCK_CHUNKS) {
-            let ciphertext_block = [ciphertext[i], ciphertext[i + 1]];
-            let aes_plaintext_block = self.scheme.decrypt(&ciphertext_block);
-
-            for aes_block in aes_plaintext_block.iter() {
-                plaintext_blocks.push(*aes_block);
-            }
-        }
-
-        plaintext_blocks
+        aes_decrypt(&self.scheme, ciphertext)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::strategy::tests::{KEY_128_BITS, PLAINTEXT_128_BITS};
+    use crate::strategy::{
+        aes_commons::AES_BLOCK_CHUNKS,
+        tests::{KEY_128_BITS, PLAINTEXT_128_BITS},
+    };
 
     use super::*;
 
