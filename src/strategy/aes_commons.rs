@@ -3,6 +3,7 @@ use aes::{key::AesKeySize, AesCipher};
 use crate::DataChunk;
 
 pub const AES128_KEY_CHUNKS: usize = 2;
+pub const AES192_KEY_CHUNKS: usize = 3;
 pub const AES_BLOCK_CHUNKS: usize = 2;
 
 pub fn init_aes_scheme(key_bytes: &[DataChunk], key_size: AesKeySize) -> AesCipher {
@@ -10,6 +11,10 @@ pub fn init_aes_scheme(key_bytes: &[DataChunk], key_size: AesKeySize) -> AesCiph
         AesKeySize::Aes128 => assert!(
             key_bytes.len() == AES128_KEY_CHUNKS,
             "AES128: Key not 128 bits long"
+        ),
+        AesKeySize::Aes192 => assert!(
+            key_bytes.len() == AES192_KEY_CHUNKS,
+            "AES192: Key not 192 bits long"
         ),
         _ => todo!("Implement remaining AES key sizes"),
     }

@@ -1,10 +1,12 @@
 mod aes128;
+mod aes192;
 mod aes_commons;
 mod des;
 mod tdes;
 
 use self::{
-    aes128::Aes128EncryptionStrategy, des::DesEncryptionStrategy, tdes::TripleDesEncryptionStrategy,
+    aes128::Aes128EncryptionStrategy, aes192::Aes192EncryptionStrategy, des::DesEncryptionStrategy,
+    tdes::TripleDesEncryptionStrategy,
 };
 
 use super::{DataChunk, EncryptionSchemes};
@@ -20,6 +22,7 @@ impl EncryptionSchemes {
             Self::Des => Box::new(DesEncryptionStrategy::new(key_bytes)),
             Self::Tdes => Box::new(TripleDesEncryptionStrategy::new(key_bytes)),
             Self::Aes128 => Box::new(Aes128EncryptionStrategy::new(key_bytes)),
+            Self::Aes192 => Box::new(Aes192EncryptionStrategy::new(key_bytes)),
             _ => todo!("Implement remaining encryption strategies"),
         }
     }
