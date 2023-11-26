@@ -4,6 +4,7 @@ use crate::DataChunk;
 
 pub const AES128_KEY_CHUNKS: usize = 2;
 pub const AES192_KEY_CHUNKS: usize = 3;
+pub const AES256_KEY_CHUNKS: usize = 4;
 pub const AES_BLOCK_CHUNKS: usize = 2;
 
 pub fn init_aes_scheme(key_bytes: &[DataChunk], key_size: AesKeySize) -> AesCipher {
@@ -16,7 +17,10 @@ pub fn init_aes_scheme(key_bytes: &[DataChunk], key_size: AesKeySize) -> AesCiph
             key_bytes.len() == AES192_KEY_CHUNKS,
             "AES192: Key not 192 bits long"
         ),
-        _ => todo!("Implement remaining AES key sizes"),
+        AesKeySize::Aes256 => assert!(
+            key_bytes.len() == AES256_KEY_CHUNKS,
+            "AES256: Key not 256 bits long"
+        ),
     }
 
     let mut key: Vec<u8> = Vec::new();

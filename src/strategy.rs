@@ -1,11 +1,13 @@
 mod aes128;
 mod aes192;
+mod aes256;
 mod aes_commons;
 mod des;
 mod tdes;
 
 use self::{
-    aes128::Aes128EncryptionStrategy, aes192::Aes192EncryptionStrategy, des::DesEncryptionStrategy,
+    aes128::Aes128EncryptionStrategy, aes192::Aes192EncryptionStrategy,
+    aes256::Aes256EncryptionStrategy, des::DesEncryptionStrategy,
     tdes::TripleDesEncryptionStrategy,
 };
 
@@ -23,7 +25,7 @@ impl EncryptionSchemes {
             Self::Tdes => Box::new(TripleDesEncryptionStrategy::new(key_bytes)),
             Self::Aes128 => Box::new(Aes128EncryptionStrategy::new(key_bytes)),
             Self::Aes192 => Box::new(Aes192EncryptionStrategy::new(key_bytes)),
-            _ => todo!("Implement remaining encryption strategies"),
+            Self::Aes256 => Box::new(Aes256EncryptionStrategy::new(key_bytes)),
         }
     }
 
@@ -57,6 +59,13 @@ mod tests {
         [0x6F, 0x2B, 0x91, 0xE7, 0x4F, 0xD8, 0xA9, 0x5C],
         [0x1A, 0x3B, 0x4C, 0x5D, 0x6E, 0x7F, 0x80, 0x91],
         [0xA2, 0xB3, 0xC4, 0xD5, 0xE6, 0xF7, 0x08, 0x19],
+    ];
+
+    pub const KEY_256_BITS: [DataChunk; 4] = [
+        [0x6F, 0x2B, 0x91, 0xE7, 0x4F, 0xD8, 0xA9, 0x5C],
+        [0x1A, 0x3B, 0x4C, 0x5D, 0x6E, 0x7F, 0x80, 0x91],
+        [0xA2, 0xB3, 0xC4, 0xD5, 0xE6, 0xF7, 0x08, 0x19],
+        [0x3A, 0x4B, 0x5C, 0x6D, 0x7E, 0x8F, 0x90, 0xA1],
     ];
 
     pub const PLAINTEXT_64_BITS: [DataChunk; 1] =
