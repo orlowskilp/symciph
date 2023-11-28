@@ -1,0 +1,384 @@
+name: Symciph
+
+on: push
+
+env:
+  APP_NAME: Symciph
+
+jobs:
+  run-tests:
+    name: Test Symciph binary crate
+    runs-on: ubuntu-22.04
+    env:
+      LCOV_OUT_LIB: lib.lcov
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install llvm-cov for unit and integration testing
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Run unit and integration tests and collect coverage
+        run: cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_LIB }} --all
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ${{ env.LCOV_OUT_LIB }}
+          fail_ci_if_error: true
+
+  run-des-scenario:
+    name: Test DES generate key / encrypt / decrypt scenario
+    needs: run-tests
+    runs-on: ubuntu-22.04
+    env:
+      LCOV_OUT_KEYGEN: app-generate-key.lcov
+      LCOV_OUT_ENCRYPT: app-encrypt.lcov
+      LCOV_OUT_DECRYPT: app-decrypt.lcov
+      ALGO: des
+      ALGO_NAME: DES
+      PLAINTEXT_FILE: tests/data/in.60_bytes.txt
+      CIPHERTEXT_FILE: ciphertext.txt
+      OUTPUT_FILE: decrypted.txt
+      KEY_FILE: des.key
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install llvm-cov for scenario testing
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Build ${{ env.APP_NAME }} binaries
+        run: cargo build
+
+      - name: Run ${{ env.ALGO_NAME }} generate key command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_KEYGEN }} run -- \
+            -g \
+            ${{ env.ALGO }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Run ${{ env.ALGO_NAME }} encrypt command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_ENCRYPT }} run -- \
+            -e \
+            ${{ env.ALGO }} \
+            ${{ env.PLAINTEXT_FILE }} \
+            ${{ env.CIPHERTEXT_FILE }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Run ${{ env.ALGO_NAME }} decrypt command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_DECRYPT }} run -- \
+            -d \
+            ${{ env.ALGO }} \
+            ${{ env.CIPHERTEXT_FILE }} \
+            ${{ env.OUTPUT_FILE }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+            token: ${{ secrets.CODECOV_TOKEN }}
+            files:
+                ${{ env.LCOV_OUT_ENCRYPT }},
+                ${{ env.LCOV_OUT_DECRYPT }},
+                ${{ env.LCOV_OUT_KEYGEN }}
+            fail_ci_if_error: true
+
+      - name: Compare checksums
+        run: |
+          LEFT=$(sha512sum ${{ env.OUTPUT_FILE }} | awk '{print $1}')
+          RIGHT=$(sha512sum ${{ env.PLAINTEXT_FILE }} | awk '{print $1}')
+          if [[ $LEFT == $RIGHT ]]; then
+            echo "left: $LEFT == $RIGHT :right"
+            exit 0
+          else
+            echo "left: $LEFT != $RIGHT :right"
+            exit 1
+          fi
+
+  run-3des-scenario:
+    name: Test 3DES generate key / encrypt / decrypt scenario
+    needs: run-tests
+    runs-on: ubuntu-22.04
+    env:
+      LCOV_OUT_KEYGEN: app-generate-key.lcov
+      LCOV_OUT_ENCRYPT: app-encrypt.lcov
+      LCOV_OUT_DECRYPT: app-decrypt.lcov
+      ALGO: tdes
+      ALGO_NAME: 3DES
+      PLAINTEXT_FILE: tests/data/in.60_bytes.txt
+      CIPHERTEXT_FILE: ciphertext.txt
+      OUTPUT_FILE: decrypted.txt
+      KEY_FILE: 3des.key
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install llvm-cov for scenario testing
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Build ${{ env.APP_NAME }} binaries
+        run: cargo build
+
+      - name: Run ${{ env.ALGO_NAME }} generate key command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_KEYGEN }} run -- \
+            -g \
+            ${{ env.ALGO }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Run ${{ env.ALGO_NAME }} encrypt command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_ENCRYPT }} run -- \
+            -e \
+            ${{ env.ALGO }} \
+            ${{ env.PLAINTEXT_FILE }} \
+            ${{ env.CIPHERTEXT_FILE }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Run ${{ env.ALGO_NAME }} decrypt command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_DECRYPT }} run -- \
+            -d \
+            ${{ env.ALGO }} \
+            ${{ env.CIPHERTEXT_FILE }} \
+            ${{ env.OUTPUT_FILE }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+            token: ${{ secrets.CODECOV_TOKEN }}
+            files:
+                ${{ env.LCOV_OUT_ENCRYPT }},
+                ${{ env.LCOV_OUT_DECRYPT }},
+                ${{ env.LCOV_OUT_KEYGEN }}
+            fail_ci_if_error: true
+
+      - name: Compare checksums
+        run: |
+          LEFT=$(sha512sum ${{ env.OUTPUT_FILE }} | awk '{print $1}')
+          RIGHT=$(sha512sum ${{ env.PLAINTEXT_FILE }} | awk '{print $1}')
+          if [[ $LEFT == $RIGHT ]]; then
+            echo "left: $LEFT == $RIGHT :right"
+            exit 0
+          else
+            echo "left: $LEFT != $RIGHT :right"
+            exit 1
+          fi
+
+  run-aes128-scenario:
+    name: Test AES-128 generate key / encrypt / decrypt scenario
+    needs: run-tests
+    runs-on: ubuntu-22.04
+    env:
+      LCOV_OUT_KEYGEN: app-generate-key.lcov
+      LCOV_OUT_ENCRYPT: app-encrypt.lcov
+      LCOV_OUT_DECRYPT: app-decrypt.lcov
+      ALGO: aes128
+      ALGO_NAME: AES-128
+      PLAINTEXT_FILE: tests/data/in.60_bytes.txt
+      CIPHERTEXT_FILE: ciphertext.txt
+      OUTPUT_FILE: decrypted.txt
+      KEY_FILE: aes128.key
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install llvm-cov for scenario testing
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Build ${{ env.APP_NAME }} binaries
+        run: cargo build
+
+      - name: Run ${{ env.ALGO_NAME }} generate key command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_KEYGEN }} run -- \
+            -g \
+            ${{ env.ALGO }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Run ${{ env.ALGO_NAME }} encrypt command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_ENCRYPT }} run -- \
+            -e \
+            ${{ env.ALGO }} \
+            ${{ env.PLAINTEXT_FILE }} \
+            ${{ env.CIPHERTEXT_FILE }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Run ${{ env.ALGO_NAME }} decrypt command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_DECRYPT }} run -- \
+            -d \
+            ${{ env.ALGO }} \
+            ${{ env.CIPHERTEXT_FILE }} \
+            ${{ env.OUTPUT_FILE }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+            token: ${{ secrets.CODECOV_TOKEN }}
+            files:
+                ${{ env.LCOV_OUT_ENCRYPT }},
+                ${{ env.LCOV_OUT_DECRYPT }},
+                ${{ env.LCOV_OUT_KEYGEN }}
+            fail_ci_if_error: true
+
+      - name: Compare checksums
+        run: |
+            LEFT=$(sha512sum ${{ env.OUTPUT_FILE }} | awk '{print $1}')
+            RIGHT=$(sha512sum ${{ env.PLAINTEXT_FILE }} | awk '{print $1}')
+            if [[ $LEFT == $RIGHT ]]; then
+            echo "left: $LEFT == $RIGHT :right"
+            exit 0
+            else
+            echo "left: $LEFT != $RIGHT :right"
+            exit 1
+            fi
+
+  run-aes192-scenario:
+    name: Test AES-192 generate key / encrypt / decrypt scenario
+    needs: run-tests
+    runs-on: ubuntu-22.04
+    env:
+      LCOV_OUT_KEYGEN: app-generate-key.lcov
+      LCOV_OUT_ENCRYPT: app-encrypt.lcov
+      LCOV_OUT_DECRYPT: app-decrypt.lcov
+      ALGO: aes192
+      ALGO_NAME: AES-192
+      PLAINTEXT_FILE: tests/data/in.60_bytes.txt
+      CIPHERTEXT_FILE: ciphertext.txt
+      OUTPUT_FILE: decrypted.txt
+      KEY_FILE: aes192.key
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install llvm-cov for scenario testing
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Build ${{ env.APP_NAME }} binaries
+        run: cargo build
+
+      - name: Run ${{ env.ALGO_NAME }} generate key command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_KEYGEN }} run -- \
+            -g \
+            ${{ env.ALGO }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Run ${{ env.ALGO_NAME }} encrypt command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_ENCRYPT }} run -- \
+            -e \
+            ${{ env.ALGO }} \
+            ${{ env.PLAINTEXT_FILE }} \
+            ${{ env.CIPHERTEXT_FILE }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Run ${{ env.ALGO_NAME }} decrypt command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_DECRYPT }} run -- \
+            -d \
+            ${{ env.ALGO }} \
+            ${{ env.CIPHERTEXT_FILE }} \
+            ${{ env.OUTPUT_FILE }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+            token: ${{ secrets.CODECOV_TOKEN }}
+            files:
+                ${{ env.LCOV_OUT_ENCRYPT }},
+                ${{ env.LCOV_OUT_DECRYPT }},
+                ${{ env.LCOV_OUT_KEYGEN }}
+            fail_ci_if_error: true
+
+      - name: Compare checksums
+        run: |
+            LEFT=$(sha512sum ${{ env.OUTPUT_FILE }} | awk '{print $1}')
+            RIGHT=$(sha512sum ${{ env.PLAINTEXT_FILE }} | awk '{print $1}')
+            if [[ $LEFT == $RIGHT ]]; then
+            echo "left: $LEFT == $RIGHT :right"
+            exit 0
+            else
+            echo "left: $LEFT != $RIGHT :right"
+            exit 1
+            fi
+
+  run-aes256-scenario:
+    name: Test AES-256 generate key / encrypt / decrypt scenario
+    needs: run-tests
+    runs-on: ubuntu-22.04
+    env:
+      LCOV_OUT_KEYGEN: app-generate-key.lcov
+      LCOV_OUT_ENCRYPT: app-encrypt.lcov
+      LCOV_OUT_DECRYPT: app-decrypt.lcov
+      ALGO: aes256
+      ALGO_NAME: AES-256
+      PLAINTEXT_FILE: tests/data/in.60_bytes.txt
+      CIPHERTEXT_FILE: ciphertext.txt
+      OUTPUT_FILE: decrypted.txt
+      KEY_FILE: aes256.key
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install llvm-cov for scenario testing
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Build ${{ env.APP_NAME }} binaries
+        run: cargo build
+
+      - name: Run ${{ env.ALGO_NAME }} generate key command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_KEYGEN }} run -- \
+            -g \
+            ${{ env.ALGO }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Run ${{ env.ALGO_NAME }} encrypt command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_ENCRYPT }} run -- \
+            -e \
+            ${{ env.ALGO }} \
+            ${{ env.PLAINTEXT_FILE }} \
+            ${{ env.CIPHERTEXT_FILE }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Run ${{ env.ALGO_NAME }} decrypt command and collect coverage
+        run: |
+            cargo llvm-cov --lcov --output-path ${{ env.LCOV_OUT_DECRYPT }} run -- \
+            -d \
+            ${{ env.ALGO }} \
+            ${{ env.CIPHERTEXT_FILE }} \
+            ${{ env.OUTPUT_FILE }} \
+            ${{ env.KEY_FILE }}
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+            token: ${{ secrets.CODECOV_TOKEN }}
+            files:
+                ${{ env.LCOV_OUT_ENCRYPT }},
+                ${{ env.LCOV_OUT_DECRYPT }},
+                ${{ env.LCOV_OUT_KEYGEN }}
+            fail_ci_if_error: true
+
+      - name: Compare checksums
+        run: |
+            LEFT=$(sha512sum ${{ env.OUTPUT_FILE }} | awk '{print $1}')
+            RIGHT=$(sha512sum ${{ env.PLAINTEXT_FILE }} | awk '{print $1}')
+            if [[ $LEFT == $RIGHT ]]; then
+            echo "left: $LEFT == $RIGHT :right"
+            exit 0
+            else
+            echo "left: $LEFT != $RIGHT :right"
+            exit 1
+            fi
