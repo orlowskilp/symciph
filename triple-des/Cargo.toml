@@ -2,6 +2,9 @@
 name = "triple-des"
 version = "0.1.1"
 edition = "2021"
+authors = ["Lukasz Orlowski (github.com/orlowskilp)"]
+license = "MIT"
+keywords = ["3DES", "3des", "Tripe Data Encryption Standard", "cryptography", "encryption", "symmetric", "block cipher"]
 
 [dependencies]
 des ={ path = "../des" }

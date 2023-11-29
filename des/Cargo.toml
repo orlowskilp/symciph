@@ -2,6 +2,9 @@
 name = "des"
 version = "0.1.2"
 edition = "2021"
+authors = ["Lukasz Orlowski (github.com/orlowskilp)"]
+license = "MIT"
+keywords = ["DES", "des", "Data Encryption Standard", "cryptography", "encryption", "symmetric", "block cipher"]
 
 [dependencies]
 crypto-primitives = { path = "../crypto-primitives" }

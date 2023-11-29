@@ -2,6 +2,12 @@
 name = "symciph"
 version = "0.1.4"
 edition = "2021"
+authors = ["Lukasz Orlowski (github.com/orlowskilp)"]
+description = "Simple symmetric encryption tool for learning purposes"
+license = "MIT"
+repository = "https://github.com/orlowskilp/symciph"
+readme = "README.md"
+keywords = ["symmetric", "encryption", "des", "3des", "aes", "cryptography", "cli", "tool"]
 
 [workspace]
 members = [

@@ -2,6 +2,9 @@
 name = "aes"
 version = "0.1.2"
 edition = "2021"
+authors = ["Lukasz Orlowski (github.com/orlowskilp)"]
+license = "MIT"
+keywords = ["AES", "aes", "AES-128", "aes128", "AES-192", "aes192", "AES-256", "aes256", "Advanced Encryption Standard", "cryptography", "encryption", "symmetric", "block cipher"]
 
 [dependencies]
 crypto-primitives = { path = "../crypto-primitives" }
